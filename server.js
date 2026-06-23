@@ -416,7 +416,7 @@ async function scrapeThePirata(type, imdbId, seasonNum, episodeNum) {
       // 1ª Tentativa: Consulta através da API nativa descrita no Prowlarr
       const resApi = await axiosInstance.get(`${base}/api/search`, {
         params: { imdbid: imdbId },
-        timeout: 5000,
+        timeout: 2500,
         headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" }
       }).catch(() => null);
 
@@ -437,7 +437,7 @@ async function scrapeThePirata(type, imdbId, seasonNum, episodeNum) {
       // 2ª Tentativa: Fallback nativo Stremio Stream API (legado)
       const stremioId = (type === "series" && seasonNum && episodeNum) ? `${imdbId}:${seasonNum}:${episodeNum}` : imdbId;
       const resStream = await axiosInstance.get(`${base}/stream/${type === "series" ? "series" : "movie"}/${stremioId}.json`, {
-        timeout: 5000,
+        timeout: 2500,
         headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" }
       }).catch(() => null);
 
@@ -1099,7 +1099,7 @@ app.get("/:id/prowlarr/api", async (req, res) => {
 
         try {
             const results = await Promise.allSettled(
-                upstreams.map((upstream) => fetchUpstream(upstream, stores, type, fullId, 25000, torrentOnly))
+                upstreams.map((upstream) => fetchUpstream(upstream, stores, type, fullId, 8500, torrentOnly))
             );
 
             const allStreams = results
