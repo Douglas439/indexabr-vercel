@@ -797,7 +797,12 @@ app.get("/internal/stream/:type/:id.json", async (req, res) => {
 
 app.get("/:id/manifest.json", async (req, res) => {
   try {
-    const cfg = await kvGet(`addon:${req.params.id}`);
+    let cfg;
+    if (process.env.API_KEY && req.params.id === process.env.API_KEY) {
+      cfg = { torrentOnly: true };
+    } else {
+      cfg = await kvGet(`addon:${req.params.id}`);
+    }
     if (!cfg) return res.status(404).json({ error: "Manifest não encontrado" });
 
     const modeLabel = cfg.torrentOnly ? " · Torrent Direto" : " · Debrid";
@@ -823,7 +828,12 @@ app.get("/:id/stream/:type/:imdb.json", async (req, res) => {
   try {
     const { id, type, imdb } = req.params;
     console.log(`[Stremio] Iniciando busca para: type=${type} imdb=${imdb} id=${id}`);
-    const cfg = await kvGet(`addon:${id}`);
+    let cfg;
+    if (process.env.API_KEY && id === process.env.API_KEY) {
+      cfg = { torrentOnly: true };
+    } else {
+      cfg = await kvGet(`addon:${id}`);
+    }
     if (!cfg) return res.json({ streams: [] });
 
     const cacheKey = `cache:v3:${id}:${type}:${imdb}`;
