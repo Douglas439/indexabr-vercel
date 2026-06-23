@@ -19,12 +19,17 @@ const axiosInstance = axios.create({
   httpsAgent: new https.Agent({ keepAlive: true })
 });
 
-const redis = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-  ? new Redis({
+let redis = null;
+try {
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    redis = new Redis({
       url: process.env.KV_REST_API_URL,
       token: process.env.KV_REST_API_TOKEN,
-    })
-  : null;
+    });
+  }
+} catch (e) {
+  console.error("Erro fatal ao inicializar o Redis (verifique suas variáveis de ambiente KV_REST_API_URL e KV_REST_API_TOKEN):", e.message);
+}
 
 const memoryStore = new Map();
 
