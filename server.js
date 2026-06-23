@@ -341,8 +341,9 @@ async function scrapeBetor(type, imdbId, seasonNum, episodeNum) {
     return torrents;
   } catch (err) {
     if (err.code === 'ECONNABORTED' || err.response?.status >= 500) {
-      // Circuit Breaker: desabilita o scrape na fonte para esta e as próximas requests por 5 minutos
-      await kvSet('circuit:betor', true, { ex: 300 });
+      // Circuit Breaker: desabilita temporariamente se a fonte cair, reduzido para 30s
+      console.warn(`[BeTor] Circuit breaker ativado! Fonte offline ou erro no servidor.`);
+      await kvSet('circuit:betor', true, { ex: 30 });
     }
     return [];
   }
@@ -465,8 +466,9 @@ async function scrapeThePirata(type, imdbId, seasonNum, episodeNum) {
   }
 
   if (!success) {
-    // Se ambos os domínios (e rotas) falharam, desliga a requisição para o Pirata via Circuit Breaker
-    await kvSet('circuit:pirata', true, { ex: 300 }); // Retoma as tentativas após 5 minutos
+    // Se ambos falharem, desliga o Pirata via Circuit Breaker por 30s
+    console.warn(`[Pirata] Circuit breaker ativado! Fonte offline ou erro no servidor.`);
+    await kvSet('circuit:pirata', true, { ex: 30 });
     return [];
   }
 
@@ -820,6 +822,7 @@ app.get("/:id/manifest.json", async (req, res) => {
 app.get("/:id/stream/:type/:imdb.json", async (req, res) => {
   try {
     const { id, type, imdb } = req.params;
+    console.log(`[Stremio] Iniciando busca para: type=${type} imdb=${imdb} id=${id}`);
     const cfg = await kvGet(`addon:${id}`);
     if (!cfg) return res.json({ streams: [] });
 
@@ -1037,6 +1040,8 @@ async function resolveQueryToImdbId(q, typeHint) {
 app.get("/:id/prowlarr/api", async (req, res) => {
     const { t, q, imdbid, season, ep } = req.query;
     const { id } = req.params;
+    
+    console.log(`[Prowlarr/Torznab] Requisição recebida: t=${t} q=${q || 'N/A'} imdbid=${imdbid || 'N/A'} season=${season || 'N/A'} ep=${ep || 'N/A'}`);
 
     if (t === 'caps') {
         res.set('Content-Type', 'text/xml');
