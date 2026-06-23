@@ -296,46 +296,48 @@ async function scrapeBetor(type, imdbId, seasonNum, episodeNum) {
     const $ = cheerio.load(html);
     const torrents = [];
 
-    $(".provider").each((_, providerEl) => {
-      const providerLabel = $(providerEl).find(".header .name").first().text().trim() || "BeTor";
+    $("[data-torrent-magnet-uri]").each((_, el) => {
+      const providerUrl = $(el).attr("data-provider-url") || "";
+      let providerLabel = "BeTor";
+      try {
+        if (providerUrl) {
+          providerLabel = new URL(providerUrl).hostname.replace("www.", "");
+        }
+      } catch (e) {}
 
-      $(providerEl)
-        .find("[data-torrent-magnet-uri]")
-        .each((_, el) => {
-          const magnet = $(el).attr("data-torrent-magnet-uri");
-          const fileName = $(el).attr("data-torrent-name") || "";
-          const rawSize = $(el).attr("data-torrent-size") || "0";
-          const seeders = $(el).attr("data-torrent-num-seeds") || "0";
+      const magnet = $(el).attr("data-torrent-magnet-uri");
+      const fileName = $(el).attr("data-torrent-name") || "";
+      const rawSize = $(el).attr("data-torrent-size") || "0";
+      const seeders = $(el).attr("data-torrent-num-seeds") || "0";
 
-          if (!magnet || !fileName || TRASH_PATTERN.test(fileName)) return;
+      if (!magnet || !fileName || TRASH_PATTERN.test(fileName)) return;
 
-          let isSeasonPack = false;
-          if (type === "series" && seasonNum && episodeNum) {
-            const matchesEp = epRegex ? epRegex.test(fileName) : false;
+      let isSeasonPack = false;
+      if (type === "series" && seasonNum && episodeNum) {
+        const matchesEp = epRegex ? epRegex.test(fileName) : false;
 
-            let matchesRange = false;
-            if (!matchesEp && epRangeRegex) {
-              const rangeMatch = fileName.match(epRangeRegex);
-              if (rangeMatch) {
-                const lo = parseInt(rangeMatch[1], 10);
-                const hi = parseInt(rangeMatch[2], 10);
-                matchesRange = episodeNum >= lo && episodeNum <= hi;
-              }
-            }
-
-            const matchesPack = packRegex ? packRegex.test(fileName) : false;
-            if (!matchesEp && !matchesRange && !matchesPack) return;
-            if (!matchesEp && !matchesRange) isSeasonPack = true;
+        let matchesRange = false;
+        if (!matchesEp && epRangeRegex) {
+          const rangeMatch = fileName.match(epRangeRegex);
+          if (rangeMatch) {
+            const lo = parseInt(rangeMatch[1], 10);
+            const hi = parseInt(rangeMatch[2], 10);
+            matchesRange = episodeNum >= lo && episodeNum <= hi;
           }
+        }
 
-          const { quality, qualityScore } = detectQuality(fileName);
-          const audio = detectAudio(fileName);
-          const torrent = buildTorrentEntry({
-            sourceLabel: "BeTor", providerLabel: `BeTor: ${providerLabel}`, fileName, rawSize, magnet, audio, quality, qualityScore, isSeasonPack, seeders,
-          });
+        const matchesPack = packRegex ? packRegex.test(fileName) : false;
+        if (!matchesEp && !matchesRange && !matchesPack) return;
+        if (!matchesEp && !matchesRange) isSeasonPack = true;
+      }
 
-          if (torrent) torrents.push(torrent);
-        });
+      const { quality, qualityScore } = detectQuality(fileName);
+      const audio = detectAudio(fileName);
+      const torrent = buildTorrentEntry({
+        sourceLabel: "BeTor", providerLabel: `BeTor: ${providerLabel}`, fileName, rawSize, magnet, audio, quality, qualityScore, isSeasonPack, seeders,
+      });
+
+      if (torrent) torrents.push(torrent);
     });
 
     return torrents;
@@ -557,22 +559,13 @@ function mapTorrentToStream(torrent) {
   const sources = torrent.indexers.join(" · ") || torrent.sourceLabel || "IndexaBR";
 
   const sizeLine = torrent.isSeasonPack
-    ? [
-        torrent.epSize ? `📄 ${torrent.epSize}/ep` : "",
-        `${packIcon} ${formatSize(torrent.rawSize)} pack`,
-      ].filter(Boolean).join(" · ")
-    : `📦 ${formatSize(torrent.rawSize)}`;
+    ? `${packIcon} 💾 ${formatSize(torrent.rawSize)} pack${torrent.epSize ? ` (📄 ${torrent.epSize}/ep)` : ''}`
+    : `💾 ${formatSize(torrent.rawSize)}`;
 
-  const title = [
-    torrent.fileName,
-    sizeLine,
-    torrent.audio,
-    `🗂 ${sources}`,
-    `👤 ${torrent.seeders || 0}`,
-  ].filter(Boolean).join("\n");
+  const title = `${torrent.fileName}\n👤 ${torrent.seeders || 0} ${sizeLine}\n⚙️ ${sources} · ${torrent.audio}`;
 
   const stream = {
-    name: `IndexaBR ${torrent.quality}`,
+    name: `IndexaBR\n${torrent.quality}`,
     title,
     infoHash: torrent.infoHash,
     sources: ANNOUNCE_SOURCES,
@@ -1038,10 +1031,15 @@ async function resolveQueryToImdbId(q, typeHint) {
 }
 
 app.get("/:id/prowlarr/api", async (req, res) => {
-    const { t, q, imdbid, season, ep } = req.query;
+    const { t, q, imdbid, season, ep, apikey } = req.query;
     const { id } = req.params;
     
     console.log(`[Prowlarr/Torznab] Requisição recebida: t=${t} q=${q || 'N/A'} imdbid=${imdbid || 'N/A'} season=${season || 'N/A'} ep=${ep || 'N/A'}`);
+
+    if (process.env.API_KEY && apikey !== process.env.API_KEY) {
+        res.set('Content-Type', 'text/xml');
+        return res.status(401).send(`<?xml version="1.0" encoding="UTF-8"?>\n<error code="100" description="Incorrect user credentials" />`);
+    }
 
     if (t === 'caps') {
         res.set('Content-Type', 'text/xml');
