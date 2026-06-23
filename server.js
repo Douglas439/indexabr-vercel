@@ -81,8 +81,7 @@ function resolveBaseUrl(req) {
 
 const BETOR_BASE_URL = "https://catalogo.betor.top";
 const PIRATA_DOMAINS = [
-  "https://www.thepiratafilmes.online", // Fallback oficial secundário agora online
-  "https://catalago.online",
+  "https://www.thepiratafilmes.online",
 ];
 const TRASH_PATTERN = /\b(CAM|CAMRIP|HDCAM|TC|HDTC|TS|HDTS|TELESYNC|TELECINE|LEGENDADO|LEGENDA|SUB|SUBS|SUBTITLE)\b/i;
 const ANNOUNCE_SOURCES = [
@@ -313,9 +312,11 @@ async function scrapeBetor(type, imdbId, seasonNum, episodeNum) {
       const magnet = $(el).attr("data-torrent-magnet-uri");
       const fileName = $(el).attr("data-torrent-name") || "";
       const rawSize = $(el).attr("data-torrent-size") || "0";
-      const seeders = $(el).attr("data-torrent-num-seeds") || "0";
+      const seedersAttr = $(el).attr("data-torrent-num-seeds");
+      const seeders = seedersAttr || "0";
 
       if (!magnet || !fileName || TRASH_PATTERN.test(fileName)) return;
+      if (parseInt(seeders, 10) <= 0) return;
 
       let isSeasonPack = false;
       if (type === "series" && seasonNum && episodeNum) {
@@ -388,6 +389,7 @@ function extractRawSizeFromTitle(title) {
 
 function processPirataBaseItem(fileName, magnet, rawSize, seeders, type, seasonNum, episodeNum, epRegex, packRegex, epRangeRegex) {
   if (!fileName || !magnet || TRASH_PATTERN.test(fileName)) return null;
+  if (parseInt(seeders, 10) <= 0) return null;
 
   const { quality, qualityScore } = detectQuality(fileName);
   const audio = detectAudio(fileName);
