@@ -924,7 +924,7 @@ function escapeXml(unsafe) {
 
 function buildCaps() {
     return `<?xml version="1.0" encoding="UTF-8"?>
-<torznab>
+<caps>
   <server version="1.0" title="IndexaBR Prowlarr" />
   <searching>
     <search available="yes" supportedParams="q" />
@@ -935,7 +935,7 @@ function buildCaps() {
     <category id="2000" name="Movies" />
     <category id="5000" name="TV" />
   </categories>
-</torznab>`;
+</caps>`;
 }
 
 function parseStreamInfo(stream) {
