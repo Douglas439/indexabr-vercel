@@ -75,7 +75,10 @@ function resolveBaseUrl(req) {
 }
 
 const BETOR_BASE_URL = "https://catalogo.betor.top";
-const PIRATA_DOMAINS = ["https://catalago.online", "https://www.thepiratafilmes.online"];
+const PIRATA_DOMAINS = [
+  "https://www.thepiratafilmes.online", // Fallback oficial secundário agora online
+  "https://catalago.online",
+];
 const TRASH_PATTERN = /\b(CAM|CAMRIP|HDCAM|TC|HDTC|TS|HDTS|TELESYNC|TELECINE|LEGENDADO|LEGENDA|SUB|SUBS|SUBTITLE)\b/i;
 const ANNOUNCE_SOURCES = [
   "tracker:udp://tracker.opentrackr.org:1337/announce",
